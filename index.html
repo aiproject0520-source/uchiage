@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1120">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="打ち上げ日和">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; touch-action: manipulation; overscroll-behavior-y: none; }
+[hidden] { display: none !important; }
+</style>
+<title>打ち上げ日和</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=M+PLUS+2:wght@400;700&display=swap">
+<style>
+/* Layout: mission-control column — launch scene, fuel and the rocket equation readout, then tabbed R&D / route map / flight log; fixed tab bar. Single dark theme on purpose (night range control room). */
+:root {
+  color-scheme: dark;
+  --night: #0d1120;
+  --deck: #161c30;
+  --deck-2: #1f2740;
+  --rule: #2c3656;
+  --text: #e6ecff;
+  --dim: #8c96ba;
+  --flame: #ff8a3d;
+  --flame-ink: #2a1104;
+  --gold: #ffd166;
+  --cyan: #6fd6e8;
+  --good: #8fd28a;
+  --bad: #ff6b5e;
+  --pixel: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", monospace;
+  --body: "M PLUS 2", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--night); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+.app { max-width: 480px; margin: 0 auto; padding-inline: 16px; padding-block: 12px calc(84px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--flame); outline-offset: 2px; }
+
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.top .no { font-family: var(--pixel); font-size: 13px; color: var(--dim); letter-spacing: .05em; }
+.top h1 { margin: 0; font-family: var(--pixel); font-weight: 400; font-size: 22px; line-height: 1.2; }
+.purse { display: flex; gap: 14px; }
+.purse div { display: flex; flex-direction: column; align-items: flex-end; }
+.purse small { font-size: 11px; color: var(--dim); letter-spacing: .06em; }
+.purse b { font-family: var(--pixel); font-weight: 400; font-size: 20px; line-height: 1.2; }
+.purse .m { color: var(--gold); } .purse .d { color: var(--cyan); }
+
+.scene { position: relative; border: 2px solid var(--rule); border-radius: 4px; overflow: hidden; background: #0b0e1c; }
+.scene canvas { display: block; width: 100%; height: auto; aspect-ratio: 160 / 130; image-rendering: crisp-edges; image-rendering: pixelated; }
+.banner { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); text-align: center; font-family: var(--pixel); padding: 6px 14px; border-radius: 3px; background: rgba(13,17,32,.86); border: 1px solid var(--rule); white-space: nowrap; pointer-events: none; }
+.banner b { display: block; font-weight: 400; font-size: 20px; }
+.banner span { font-size: 12px; color: var(--dim); }
+.banner.ok b { color: var(--good); } .banner.first b { color: var(--gold); } .banner.fail b { color: var(--bad); }
+
+.console { background: var(--deck); border: 1px solid var(--rule); border-radius: 4px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.fuelrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.fuelrow .lbl { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); }
+.fuelrow .lbl b { font-family: var(--pixel); font-weight: 400; color: var(--text); font-size: 14px; }
+.gauge { height: 10px; background: var(--night); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+.gauge span { display: block; height: 100%; background: var(--flame); }
+.go { padding: 12px 16px; border-radius: 4px; background: var(--flame); color: var(--flame-ink); font-family: var(--pixel); font-size: 17px; box-shadow: 0 3px 0 #a84a14; }
+.go:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #a84a14; }
+.go:disabled { background: var(--deck-2); color: var(--dim); box-shadow: 0 3px 0 var(--rule); cursor: default; }
+.auto { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--dim); gap: 10px; }
+.switch { width: 48px; height: 26px; border-radius: 13px; background: var(--deck-2); border: 1px solid var(--rule); position: relative; flex: none; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--dim); transition: transform .15s, background .15s; }
+.switch[aria-checked="true"] { border-color: var(--flame); }
+.switch[aria-checked="true"]::after { transform: translateX(22px); background: var(--flame); }
+
+.eq { border-top: 1px dashed var(--rule); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.eq .f { font-family: var(--pixel); font-size: 13px; color: var(--cyan); overflow-x: auto; white-space: nowrap; }
+.eq .vals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.eq .vals div { min-width: 0; }
+.eq .vals small { display: block; font-size: 11px; color: var(--dim); }
+.eq .vals b { font-family: var(--pixel); font-weight: 400; font-size: 15px; overflow-wrap: anywhere; }
+.next { font-size: 12px; color: var(--dim); display: flex; justify-content: space-between; gap: 8px; }
+.next b { font-family: var(--pixel); font-weight: 400; color: var(--text); }
+.prog { height: 6px; background: var(--night); border-radius: 2px; overflow: hidden; }
+.prog span { display: block; height: 100%; background: var(--cyan); }
+
+.panel { display: flex; flex-direction: column; gap: 8px; }
+.panel h2 { margin: 4px 0 0; font-family: var(--pixel); font-weight: 400; font-size: 15px; color: var(--dim); letter-spacing: .1em; }
+.hint { margin: 0; font-size: 12px; color: var(--dim); }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; background: var(--deck); border: 1px solid var(--rule); border-radius: 4px; }
+.row strong { font-size: 15px; }
+.row .lv { font-family: var(--pixel); color: var(--dim); font-size: 13px; margin-left: 6px; }
+.row p { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+.buy { min-width: 96px; padding: 9px 10px; border-radius: 4px; font-family: var(--pixel); font-size: 14px; background: var(--gold); color: #2a1f02; box-shadow: 0 3px 0 #a3801e; }
+.buy:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #a3801e; }
+.buy:disabled { background: var(--deck-2); color: var(--dim); box-shadow: 0 3px 0 var(--rule); cursor: default; }
+
+.route { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.route li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--deck-2); }
+.route .pin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--rule); justify-self: center; }
+.route li.done .pin { background: var(--cyan); border-color: var(--cyan); }
+.route li.next .pin { border-color: var(--flame); }
+.route li strong { font-size: 14px; }
+.route li p { margin: 0; font-size: 12px; color: var(--dim); }
+.route li .dv { font-family: var(--pixel); font-size: 13px; color: var(--dim); white-space: nowrap; }
+.route li.done .dv { color: var(--cyan); }
+.route li.hide strong { color: var(--dim); }
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; font-size: 13px; }
+.log li { padding: 5px 0; border-bottom: 1px solid var(--deck-2); color: var(--dim); overflow-wrap: anywhere; }
+.log li.first { color: var(--gold); } .log li.fail { color: var(--bad); }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--dim); }
+.stats b { font-family: var(--pixel); font-weight: 400; color: var(--text); font-size: 15px; margin-left: 4px; }
+
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--deck); border-top: 1px solid var(--rule); padding: 6px 16px calc(6px + env(safe-area-inset-bottom, 0px)); }
+.tabs div { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tabs button { padding: 10px 4px; border-radius: 4px; font-family: var(--pixel); font-size: 16px; color: var(--dim); position: relative; }
+.tabs button[aria-selected="true"] { color: var(--flame); background: var(--night); }
+.tabs .dot { position: absolute; top: 6px; right: calc(50% - 32px); width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+
+.veil { position: fixed; inset: 0; z-index: 10; background: rgba(6,8,16,.82); display: grid; place-items: center; padding: 16px; }
+.card { width: 100%; max-width: 380px; background: var(--deck); border: 1px solid var(--flame); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.card h3 { margin: 0; font-family: var(--pixel); font-weight: 400; font-size: 20px; color: var(--flame); }
+.card dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 14px; }
+.card dt { color: var(--dim); } .card dd { margin: 0; font-family: var(--pixel); font-size: 16px; text-align: right; }
+.card .ok { padding: 11px; border-radius: 4px; background: var(--flame); color: var(--flame-ink); font-family: var(--pixel); font-size: 16px; }
+@media (prefers-reduced-motion: reduce) { .go:active, .buy:active { transform: none; } .switch::after { transition: none; } }
+</style>
+
+
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <div>
+      <div class="no" id="no">次は第1号機</div>
+      <h1>打ち上げ日和</h1>
+    </div>
+    <div class="purse">
+      <div><small>資金</small><b class="m" id="money">0万円</b></div>
+      <div><small>飛行データ</small><b class="d" id="data">0</b></div>
+    </div>
+  </header>
+
+  <div class="scene">
+    <canvas id="cv" width="160" height="130" aria-label="発射場のようす"></canvas>
+    <div class="banner" id="banner" hidden><b id="bnT"></b><span id="bnS"></span></div>
+  </div>
+
+  <section class="console" aria-label="発射管制">
+    <div class="fuelrow">
+      <div>
+        <div class="lbl"><span>燃料</span><b id="fuelv">0 / 20 t</b></div>
+        <div class="gauge"><span id="fuelg"></span></div>
+      </div>
+      <button class="go" id="go">打ち上げ</button>
+    </div>
+    <div class="auto"><span>燃料が満タンになったら自動で打ち上げる</span><button class="switch" id="autoSw" role="switch" aria-checked="true" aria-label="自動打ち上げ"></button></div>
+    <div class="eq">
+      <div class="f">Δv = Isp × g₀ × ln(m₀ / m₁) × 段数補正</div>
+      <div class="vals">
+        <div><small>比推力 Isp</small><b id="isp">220秒</b></div>
+        <div><small>質量比</small><b id="ratio">3.2</b></div>
+        <div><small>段数</small><b id="stg">1段</b></div>
+        <div><small>Δv</small><b id="dv">0 m/s</b></div>
+      </div>
+      <div class="next"><span id="nextT">次の目標</span><span>失敗率 <b id="fail">35%</b></span></div>
+      <div class="prog"><span id="nextP"></span></div>
+    </div>
+  </section>
+
+  <section class="panel" id="tab-dev">
+    <h2>研究開発</h2>
+    <div id="ups"></div>
+  </section>
+  <section class="panel" id="tab-route" hidden>
+    <h2>航路図</h2>
+    <p class="hint">必要なΔvは、地上から出発したときのおおよその値です。</p>
+    <ul class="route" id="route"></ul>
+  </section>
+  <section class="panel" id="tab-log" hidden>
+    <h2>飛行記録</h2>
+    <div class="stats" id="stats"></div>
+    <ul class="log" id="log"></ul>
+  </section>
+</main>
+
+<nav class="tabs" role="tablist" aria-label="画面切り替え">
+  <div>
+    <button role="tab" aria-selected="true" data-tab="dev">開発<i class="dot" id="devDot" hidden></i></button>
+    <button role="tab" aria-selected="false" data-tab="route">航路</button>
+    <button role="tab" aria-selected="false" data-tab="log">記録</button>
+  </div>
+</nav>
+
+<div class="veil" id="away" hidden>
+  <div class="card" role="dialog" aria-labelledby="awayT">
+    <h3 id="awayT">留守のあいだに</h3>
+    <dl id="awayDl"></dl>
+    <button class="ok" id="awayOk">管制室に戻る</button>
+  </div>
+</div>
+<script>
+// ===== core: rocket program logic (no DOM) =====
+const G0 = 9.81;
+const DEST = [
+  { dv: 1800,   name: '成層圏',           far: '高度 約20km' },
+  { dv: 2900,   name: '宇宙',             far: '高度100km（カーマン線）' },
+  { dv: 9400,   name: '地球周回軌道',     far: '高度 約400km' },
+  { dv: 13000,  name: '静止軌道',         far: '高度 約3万6千km' },
+  { dv: 15500,  name: '月',               far: '約38万km' },
+  { dv: 19000,  name: '火星',             far: '約7,800万km' },
+  { dv: 27000,  name: '木星',             far: '約6億3千万km' },
+  { dv: 33000,  name: '土星',             far: '約13億km' },
+  { dv: 40000,  name: '天王星',           far: '約27億km' },
+  { dv: 46000,  name: '海王星',           far: '約43億km' },
+  { dv: 60000,  name: '太陽系の外',       far: '約180億km' },
+  { dv: 150000, name: 'ケンタウルス座α星', far: '4.3光年' },
+  { dv: 4e5,    name: '銀河の中心',       far: '2万6千光年' },
+  { dv: 1e6,    name: 'アンドロメダ銀河', far: '250万光年' },
+];
+const UPG = {
+  engine:  { name: 'エンジン改良',   desc: '比推力 +12秒',       cost: lv => 15 * 1.6 ** lv },
+  tank:    { name: '燃料タンク拡張', desc: '積める燃料 ×1.22',   cost: lv => 12 * 1.55 ** lv },
+  light:   { name: '機体の軽量化',   desc: '乾燥重量 ×0.94',     cost: lv => 20 * 1.65 ** lv },
+  stage:   { name: '多段化',         desc: 'ロケットを1段増やす', cost: lv => 3000 * 25 ** lv, max: 3 },
+  plant:   { name: '燃料プラント',   desc: '燃料の生産 ×1.3',     cost: lv => 10 * 1.5 ** lv },
+  sponsor: { name: 'スポンサー',     desc: '毎秒の資金 ×1.25',    cost: lv => 8 * 1.5 ** lv },
+  guide:   { name: '姿勢制御',       desc: '失敗の確率 ×0.85',   cost: lv => 25 * 1.6 ** lv, max: 15 },
+};
+const FLIGHT = 5; // seconds a launch takes on screen
+
+function newProgram() {
+  return { v: 1, t: Date.now(), money: 30, fuel: 0, data: 0, launches: 0, fails: 0, best: 0, reached: -1, auto: true,
+    lv: { engine: 0, tank: 0, light: 0, stage: 0, plant: 0, sponsor: 0, guide: 0 }, log: [] };
+}
+function spec(s) {
+  const l = s.lv;
+  const isp = 220 + 12 * l.engine;
+  const fuel = 20 * 1.22 ** l.tank;
+  const dry = 8 * 0.94 ** l.light + 1;
+  const stages = 1 + l.stage;
+  const ratio = (dry + fuel) / dry;
+  const dv = isp * G0 * Math.log(ratio) * (1 + 0.6 * (stages - 1));
+  return { isp, fuel, dry, stages, ratio, dv,
+    fuelRate: 0.5 * 1.3 ** l.plant,
+    income: 1 * 1.25 ** l.sponsor,
+    failP: 0.35 * 0.85 ** l.guide * 0.995 ** Math.min(s.data, 300),
+    bonus: 1 + 0.02 * s.data };
+}
+function destIndex(dv) { let k = -1; DEST.forEach((d, i) => { if (dv >= d.dv) k = i; }); return k; }
+function altitudeKm(dv) { return Math.max(0, dv - 1300) ** 2 / (2 * G0) / 1000; }
+function reachText(dv) {
+  const k = destIndex(dv);
+  if (k < 2) return `高度 ${Math.round(Math.min(altitudeKm(dv), 2000)).toLocaleString('ja-JP')}km`;
+  return DEST[k].name;
+}
+function upCost(s, k) { return Math.ceil(UPG[k].cost(s.lv[k])); }
+function upMaxed(s, k) { return UPG[k].max != null && s.lv[k] >= UPG[k].max; }
+function buyUp(s, k) {
+  if (upMaxed(s, k)) return false;
+  const c = upCost(s, k);
+  if (s.money < c) return false;
+  s.money -= c; s.lv[k]++;
+  return true;
+}
+function pushLog(s, text, kind, quiet) {
+  if (quiet) return;
+  s.log.unshift({ n: s.launches, text, kind });
+  if (s.log.length > 30) s.log.length = 30;
+}
+function launch(s, quiet, sum) {
+  const sp = spec(s);
+  s.fuel = 0;
+  s.launches++;
+  const fail = Math.random() < sp.failP;
+  const dv = fail ? sp.dv * (0.15 + Math.random() * 0.7) : sp.dv;
+  const k = destIndex(dv);
+  let reward = 0, first = false;
+  if (fail) {
+    s.fails++; s.data += 3;
+    pushLog(s, `第${s.launches}号機、${reachText(dv)}で爆発。データ +3`, 'fail', quiet);
+  } else {
+    s.data += 1;
+    reward = 2 * (dv / 1000) ** 1.6 * sp.bonus;
+    if (k > s.reached) {
+      first = true;
+      const bonus = 30 * 2.5 ** k;
+      reward += bonus;
+      s.reached = k;
+      pushLog(s, `第${s.launches}号機、初めて${DEST[k].name}に到達！ 記念ボーナス +${Math.round(bonus).toLocaleString('ja-JP')}万円`, 'first', quiet);
+    } else {
+      pushLog(s, `第${s.launches}号機、${reachText(dv)}に到達（+${Math.round(reward).toLocaleString('ja-JP')}万円）`, 'ok', quiet);
+    }
+    if (dv > s.best) s.best = dv;
+  }
+  s.money += reward;
+  if (sum) { sum.launches++; if (fail) sum.fails++; sum.money += reward; if (first) sum.firsts.push(DEST[k].name); }
+  return { fail, dv, k, reward, first, stages: sp.stages };
+}
+// advance sec seconds of fuel/money; returns launch results (auto mode)
+function tickSec(s, sec, quiet, sum) {
+  const sp = spec(s);
+  s.money += sp.income * sec;
+  if (sum) sum.money += sp.income * sec;
+  s.fuel = Math.min(sp.fuel, s.fuel + sp.fuelRate * sec);
+  return s.fuel >= sp.fuel - 1e-9;
+}
+function simulate(s, sec) {
+  const sum = { sec, launches: 0, fails: 0, money: 0, firsts: [], data0: s.data };
+  let left = Math.min(sec, 12 * 3600), guard = 0;
+  while (left > 0 && guard++ < 200000) {
+    const sp = spec(s);
+    const need = Math.max(0, (sp.fuel - s.fuel) / sp.fuelRate);
+    const dt = Math.min(left, need);
+    tickSec(s, dt, true, sum);
+    left -= dt;
+    if (left <= 0) break;
+    if (!s.auto) { tickSec(s, left, true, sum); break; }
+    launch(s, true, sum);
+    const fl = Math.min(left, FLIGHT);
+    tickSec(s, fl, true, sum);
+    left -= fl;
+  }
+  sum.data = s.data - sum.data0;
+  return sum;
+}
+// ===== ui =====
+const KEY = 'uchiage-biyori-v1';
+let S = null, curTab = 'dev', flight = null;
+const $ = id => document.getElementById(id);
+
+function fmt(n) {
+  n = Math.max(0, n);
+  if (n < 10000) return Math.floor(n).toLocaleString('ja-JP');
+  for (const [u, nm] of [[1e20, '垓'], [1e16, '京'], [1e12, '兆'], [1e8, '億'], [1e4, '万']]) {
+    if (n >= u) { const v = n / u; if (v >= 10000) return n.toExponential(2); return (v < 10 ? v.toFixed(2) : v < 100 ? v.toFixed(1) : Math.floor(v)) + nm; }
+  }
+}
+const man = n => fmt(n) + '万円';
+const ms = v => Math.round(v).toLocaleString('ja-JP') + ' m/s';
+
+function save() { if (!S) return; S.t = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY); if (!raw) return null;
+    const s = JSON.parse(raw); if (!s || s.v !== 1) return null;
+    const base = newProgram();
+    s.lv = Object.assign(base.lv, s.lv || {});
+    return s;
+  } catch (e) { return null; }
+}
+
+// ================= scene =================
+const RP = { k: '#1a1e2c', r: '#e8483a', w: '#eef1f6', b: '#6fd6e8', S: '#9aa0b0', g: '#555c6c' };
+function rocketRows(stages) {
+  const rows = ["...k...", "..krk..", "..krk..", ".kwwwk.", ".kwbwk.", ".kwwwk."];
+  for (let i = 0; i < stages; i++) rows.push(".kSSSk.", ".kwwwk.", ".kwwwk.", ".kwrwk.", ".kwwwk.", ".kwwwk.");
+  rows.push("kkwwwkk", "k.kgk.k");
+  return rows;
+}
+function blit(ctx, rows, x, y, pal) {
+  for (let j = 0; j < rows.length; j++) for (let i = 0; i < rows[j].length; i++) {
+    const c = rows[j][i]; if (c === '.') continue;
+    ctx.fillStyle = pal[c]; ctx.fillRect(x + i, y + j, 1, 1);
+  }
+}
+const hash = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
+const STARS = Array.from({ length: 70 }, (_, i) => [Math.floor(hash(i, 1) * 160), Math.floor(hash(i, 2) * 130), hash(i, 3)]);
+function lerpC(a, b, t) {
+  const pa = [1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16)), pb = [1, 3, 5].map(i => parseInt(b.slice(i, i + 2), 16));
+  return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * t)).join(',')})`;
+}
+function sky(ctx, a) {
+  for (let y = 0; y < 130; y += 2) {
+    const f = y / 130;
+    const day = lerpC('#3f86d6', '#a8d6f4', f);
+    const top = lerpC('#3f86d6', '#070a18', Math.min(1, a * 1.4));
+    const bot = lerpC('#a8d6f4', '#0c1430', Math.min(1, a * 1.1));
+    ctx.fillStyle = a <= 0 ? day : lerpC(rgbHex(top), rgbHex(bot), f);
+    ctx.fillRect(0, y, 160, 2);
+  }
+  const sa = Math.max(0, (a - 0.35) / 0.5);
+  if (sa > 0) for (const [x, y, b] of STARS) { ctx.fillStyle = `rgba(255,255,240,${Math.min(1, sa) * (0.4 + b * 0.6)})`; ctx.fillRect(x, y, 1, 1); }
+}
+function rgbHex(rgb) { const m = rgb.match(/\d+/g).map(Number); return '#' + m.map(v => v.toString(16).padStart(2, '0')).join(''); }
+function ground(ctx, off) {
+  const g = 104 + off;
+  if (g > 140) return;
+  // far hills and sea
+  ctx.fillStyle = '#5f8fb0'; ctx.fillRect(0, g - 8, 160, 2);
+  ctx.fillStyle = '#3a78b8'; ctx.fillRect(0, g - 6, 160, 6);
+  ctx.fillStyle = '#5aa0d8'; for (let x = 0; x < 160; x += 7) ctx.fillRect(x + ((x / 7) % 3), g - 4, 3, 1);
+  ctx.fillStyle = '#4f8a3e'; ctx.fillRect(0, g, 160, 40);
+  ctx.fillStyle = '#3f7232'; for (let x = 0; x < 160; x += 5) ctx.fillRect(x, g + 3 + (x % 3), 2, 1);
+  ctx.fillStyle = '#9aa0a8'; ctx.fillRect(56, g, 48, 5);
+  ctx.fillStyle = '#7a8088'; ctx.fillRect(56, g + 5, 48, 1);
+  // gantry
+  const gx = 88, gy = g - 52;
+  ctx.fillStyle = '#c8502a'; ctx.fillRect(gx, gy, 2, 52); ctx.fillRect(gx + 6, gy, 2, 52);
+  ctx.fillStyle = '#e8e2d6';
+  for (let y = gy; y < g; y += 6) { ctx.fillRect(gx + 2, y, 4, 1); ctx.fillRect(gx + 2 + ((y / 6) % 2 ? 0 : 3), y + 1, 1, 4); }
+  ctx.fillStyle = '#c8502a'; ctx.fillRect(gx - 4, gy + 10, 4, 1); ctx.fillRect(gx - 4, gy + 30, 4, 1);
+  // building
+  ctx.fillStyle = '#d8d4c8'; ctx.fillRect(14, g - 12, 18, 12);
+  ctx.fillStyle = '#5a6a80'; for (let x = 16; x < 30; x += 4) ctx.fillRect(x, g - 9, 2, 2);
+}
+const CLOUDS = [[20, -20, 18], [110, -70, 22], [40, -150, 16], [125, -230, 20], [10, -300, 14]];
+function clouds(ctx, off) {
+  for (const [x, y, w] of CLOUDS) {
+    const yy = y + off; if (yy < -10 || yy > 135) continue;
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.fillRect(x, yy, w, 4); ctx.fillRect(x + 3, yy - 2, w - 8, 2); ctx.fillRect(x + 6, yy - 4, w - 14, 2);
+  }
+}
+function disc(ctx, cx, cy, r, fn) {
+  const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(129, Math.ceil(cy + r));
+  for (let y = y0; y <= y1; y++) {
+    const dy = y - cy, w = Math.sqrt(Math.max(0, r * r - dy * dy));
+    const x0 = Math.max(0, Math.floor(cx - w)), x1 = Math.min(159, Math.ceil(cx + w));
+    for (let x = x0; x <= x1; x++) {
+      const dx = x - cx;
+      if (dx * dx + dy * dy > r * r) continue;
+      const shade = (dx + dy) / (r * 2.2);
+      ctx.fillStyle = fn(dx, dy, shade, x, y);
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+}
+const dark = (c, s) => (s > 0.25 ? lerpC(c, '#05060c', Math.min(0.75, s)) : c);
+function planet(ctx, k, cy) {
+  const cx = 80;
+  switch (k) {
+    case 1: case 0: { // horizon
+      disc(ctx, 80, 130 + 300 - cy * 0, 330, (dx, dy, s, x, y) => hash(Math.floor(x / 6), Math.floor(y / 4)) > 0.6 ? '#4f8a3e' : '#2f6cc0');
+      break;
+    }
+    case 2: disc(ctx, 80, 210 + (40 - cy), 110, (dx, dy, s, x, y) => dark(hash(Math.floor(x / 5), Math.floor(y / 3)) > 0.82 ? '#f4f6fa' : hash(Math.floor(x / 9), Math.floor(y / 6)) > 0.62 ? '#4f8a3e' : '#2f6cc0', s)); break;
+    case 3: disc(ctx, cx, cy, 22, (dx, dy, s, x, y) => dark(hash(Math.floor(x / 3), Math.floor(y / 2)) > 0.84 ? '#f4f6fa' : hash(Math.floor(x / 5), Math.floor(y / 4)) > 0.6 ? '#4f8a3e' : '#2f6cc0', s)); break;
+    case 4: disc(ctx, cx, cy, 18, (dx, dy, s, x, y) => dark(hash(Math.floor(x / 3), Math.floor(y / 3)) > 0.78 ? '#8a8a94' : '#c4c4cc', s)); break;
+    case 5: disc(ctx, cx, cy, 16, (dx, dy, s, x, y) => dark(dy < -13 ? '#f4f6fa' : hash(Math.floor(x / 4), Math.floor(y / 3)) > 0.7 ? '#8a3a22' : '#c8603a', s)); break;
+    case 6: disc(ctx, cx, cy, 26, (dx, dy, s) => dark((dx - 8) ** 2 + (dy - 8) ** 2 * 3 < 18 ? '#c0503a' : ['#e8d0b0', '#c89a6a', '#e8d0b0', '#b08460'][Math.floor((dy + 26) / 5) % 4], s)); break;
+    case 7: {
+      ctx.fillStyle = '#b8a070';
+      for (let a = 0; a < Math.PI * 2; a += 0.02) { const x = cx + Math.cos(a) * 34, y = cy + Math.sin(a) * 7; if (Math.sin(a) < 0) ctx.fillRect(Math.round(x), Math.round(y), 2, 1); }
+      disc(ctx, cx, cy, 17, (dx, dy, s) => dark(['#e8d4a0', '#d8bc80'][Math.floor((dy + 17) / 4) % 2], s));
+      ctx.fillStyle = '#c8b080';
+      for (let a = 0; a < Math.PI * 2; a += 0.02) { const x = cx + Math.cos(a) * 34, y = cy + Math.sin(a) * 7; if (Math.sin(a) >= 0) ctx.fillRect(Math.round(x), Math.round(y), 2, 1); }
+      break;
+    }
+    case 8: disc(ctx, cx, cy, 16, (dx, dy, s) => dark('#8fe0e8', s)); break;
+    case 9: disc(ctx, cx, cy, 16, (dx, dy, s, x, y) => dark(hash(Math.floor(x / 4), Math.floor(y / 2)) > 0.88 ? '#9ab8ff' : '#3a6ad8', s)); break;
+    case 10: { ctx.fillStyle = '#fff4c0'; ctx.fillRect(cx - 1, cy - 1, 3, 3); ctx.fillStyle = 'rgba(255,240,180,.35)'; ctx.fillRect(cx - 3, cy, 7, 1); ctx.fillRect(cx, cy - 3, 1, 7); break; }
+    case 11: for (const [x, c] of [[cx - 8, '#fff2b0'], [cx + 6, '#ffc890']]) { glow(ctx, x, cy, 10, c); ctx.fillStyle = c; ctx.fillRect(x - 1, cy - 1, 3, 3); } break;
+    case 12: glow(ctx, cx, cy, 30, '#ffe0a8'); glow(ctx, cx, cy, 12, '#fff6e0'); break;
+    default: {
+      for (let i = 0; i < 400; i++) {
+        const a = hash(i, 9) * Math.PI * 2, r = hash(i, 7) ** 1.5 * 40;
+        const sx = Math.cos(a + r / 12) * r, sy = Math.sin(a + r / 12) * r * 0.4;
+        ctx.fillStyle = r < 8 ? '#fff0d0' : '#b8b8ff';
+        ctx.fillRect(Math.round(cx + sx * 0.9 - sy * 0.4), Math.round(cy + sy + sx * 0.25), 1, 1);
+      }
+      glow(ctx, cx, cy, 14, '#fff0d0');
+    }
+  }
+}
+function glow(ctx, x, y, r, c) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.8; ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1;
+}
+
+let smoke = [], debris = [];
+const PAD_Y = 104; // rocket bottom on screen while on the pad
+function worldAlt(t) { return t < 0.6 ? 0 : 26 * (t - 0.6) ** 2.6; }
+function drawScene(now, dt) {
+  const ctx = $('cv').getContext('2d');
+  const sp = spec(S);
+  const stages = flight ? flight.res.stages : sp.stages;
+  const rows = rocketRows(stages), rh = rows.length;
+  let alt = 0, rocketY = PAD_Y - rh, shake = 0, showRocket = true, a = 0;
+  if (flight) {
+    const t = flight.t, r = flight.res;
+    const tEnd = r.fail ? flight.tf : 99;
+    const tt = Math.min(t, tEnd);
+    alt = worldAlt(tt);
+    rocketY = Math.max(52, PAD_Y - rh - alt);
+    const cap = r.k < 0 ? 0.3 : r.k === 0 ? 0.45 : r.k === 1 ? 0.75 : 1;
+    a = Math.min(cap, alt / 520);
+    if (t < 0.6) shake = Math.floor(now / 40) % 2 ? 1 : -1;
+    if (r.fail && t >= flight.tf) showRocket = false;
+  }
+  const camOff = Math.max(0, alt - (PAD_Y - rh - 52));
+  sky(ctx, a);
+  if (flight && !flight.res.fail && flight.t > 3) {
+    const p = Math.min(1, (flight.t - 3) / 1.6);
+    const k = flight.res.k;
+    if (k >= 2) planet(ctx, k, -40 + p * 70);
+    else if (k === 1) planet(ctx, 1, 0);
+  }
+  clouds(ctx, camOff);
+  ground(ctx, camOff);
+  // smoke (world coords)
+  for (const p of smoke) {
+    p.life -= dt; p.x += p.vx * dt; p.wy += p.vy * dt; p.r += dt * 2;
+    const sy = p.wy + camOff;
+    if (p.life > 0 && sy < 135) { ctx.fillStyle = `rgba(235,235,240,${Math.min(0.8, p.life / 2)})`; ctx.fillRect(Math.round(p.x - p.r / 2), Math.round(sy - p.r / 2), Math.ceil(p.r), Math.ceil(p.r)); }
+  }
+  smoke = smoke.filter(p => p.life > 0 && p.wy + camOff < 140);
+  const rx = 77 + shake;
+  if (showRocket) {
+    if (flight && flight.t > 0.15) {
+      const fl = 3 + (Math.floor(now / 60) % 3);
+      ctx.fillStyle = '#ff8a3d'; ctx.fillRect(rx + 2, rocketY + rh, 3, fl);
+      ctx.fillStyle = '#ffd166'; ctx.fillRect(rx + 3, rocketY + rh, 1, fl - 1);
+      if (Math.random() < 0.7) smoke.push({ x: rx + 3 + (Math.random() - 0.5) * 4, wy: rocketY + rh + 3 - camOff, vx: (Math.random() - 0.5) * 6, vy: 4, r: 2, life: 1.6 + Math.random() });
+    }
+    blit(ctx, rows, rx, Math.round(rocketY), RP);
+  }
+  // explosion
+  for (const d of debris) {
+    d.life -= dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 30 * dt;
+    if (d.life > 0) { ctx.fillStyle = d.c; ctx.fillRect(Math.round(d.x), Math.round(d.y), d.s, d.s); }
+  }
+  debris = debris.filter(d => d.life > 0);
+  // fuel tank indicator on the pad
+  if (!flight) {
+    const f = S.fuel / sp.fuel;
+    ctx.fillStyle = '#1a1e2c'; ctx.fillRect(66, PAD_Y - 30, 4, 26);
+    ctx.fillStyle = '#ff8a3d'; ctx.fillRect(67, PAD_Y - 5 - Math.round(24 * f), 2, Math.round(24 * f));
+  }
+}
+function explode(x, y) {
+  const cols = ['#ffd166', '#ff8a3d', '#e8483a', '#eef1f6', '#9aa0b0'];
+  for (let i = 0; i < 40; i++) {
+    const a = Math.random() * Math.PI * 2, v = 10 + Math.random() * 40;
+    debris.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 10, c: cols[i % cols.length], s: Math.random() < 0.3 ? 2 : 1, life: 0.8 + Math.random() * 1.2 });
+  }
+}
+function startFlight(res) {
+  flight = { res, t: 0, tf: res.fail ? 1.4 + Math.min(2.2, res.dv / spec(S).dv * 2.4) : 0, boom: false };
+  for (let i = 0; i < 14; i++) smoke.push({ x: 70 + Math.random() * 20, wy: PAD_Y - Math.random() * 3, vx: (Math.random() - 0.5) * 30, vy: -Math.random() * 3, r: 2 + Math.random() * 2, life: 1.5 + Math.random() * 1.5 });
+  $('banner').hidden = true;
+}
+function updateFlight(dt) {
+  if (!flight) return;
+  flight.t += dt;
+  const r = flight.res;
+  if (r.fail && !flight.boom && flight.t >= flight.tf) {
+    flight.boom = true;
+    const rh = rocketRows(r.stages).length;
+    const rocketY = Math.max(52, PAD_Y - rh - worldAlt(flight.tf));
+    explode(80, rocketY + rh / 2);
+  }
+  const showAt = r.fail ? flight.tf + 0.3 : 3.6;
+  if (flight.t >= showAt && $('banner').hidden && !flight.shown) {
+    flight.shown = true;
+    const b = $('banner');
+    b.className = 'banner ' + (r.fail ? 'fail' : r.first ? 'first' : 'ok');
+    $('bnT').textContent = r.fail ? '爆発…' : r.first ? `初めて${DEST[r.k].name}に到達！` : r.k >= 2 ? `${DEST[r.k].name}に到達` : reachText(r.dv) + 'まで上昇';
+    $('bnS').textContent = r.fail ? `${reachText(r.dv)}で失敗・データ +3` : `Δv ${ms(r.dv)}・+${man(r.reward)}`;
+    b.hidden = false;
+  }
+  if (flight.t >= FLIGHT + (r.fail ? 0.5 : 0.8)) { flight = null; $('banner').hidden = true; smoke = []; }
+}
+
+// ================= panels =================
+function buildRows() {
+  const box = $('ups'); box.innerHTML = '';
+  for (const k of Object.keys(UPG)) {
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = `<div><strong>${UPG[k].name}</strong><span class="lv" id="ul-${k}"></span><p>${UPG[k].desc}</p></div><button class="buy" id="ub-${k}"></button>`;
+    box.appendChild(r);
+    r.querySelector('button').addEventListener('click', () => { if (buyUp(S, k)) { save(); render(); } });
+  }
+}
+function render() {
+  const sp = spec(S);
+  $('no').textContent = `次は第${S.launches + 1}号機`;
+  $('money').textContent = man(S.money);
+  $('data').textContent = fmt(S.data);
+  $('fuelv').textContent = `${S.fuel.toFixed(1)} / ${sp.fuel.toFixed(1)} t`;
+  $('fuelg').style.width = Math.min(100, S.fuel / sp.fuel * 100) + '%';
+  $('go').disabled = !!flight || S.fuel < sp.fuel - 1e-9;
+  $('go').textContent = flight ? '飛行中' : S.fuel < sp.fuel - 1e-9 ? `あと${Math.ceil((sp.fuel - S.fuel) / sp.fuelRate)}秒` : '打ち上げ';
+  $('autoSw').setAttribute('aria-checked', String(S.auto));
+  $('isp').textContent = Math.round(sp.isp) + '秒';
+  $('ratio').textContent = sp.ratio.toFixed(2);
+  $('stg').textContent = sp.stages + '段';
+  $('dv').textContent = ms(sp.dv);
+  $('fail').textContent = (sp.failP * 100).toFixed(1) + '%';
+  const nk = destIndex(sp.dv) + 1;
+  if (nk < DEST.length) {
+    $('nextT').innerHTML = `次の目標 <b>${DEST[nk].name}</b>（${ms(DEST[nk].dv)}）`;
+    $('nextP').style.width = Math.min(100, sp.dv / DEST[nk].dv * 100) + '%';
+  } else { $('nextT').textContent = '最遠の目標まで届く性能です'; $('nextP').style.width = '100%'; }
+  let can = false;
+  for (const k of Object.keys(UPG)) {
+    const maxed = upMaxed(S, k), b = $('ub-' + k);
+    $('ul-' + k).textContent = 'Lv' + S.lv[k] + (maxed ? ' 最大' : '');
+    if (maxed) { b.textContent = '最大'; b.disabled = true; continue; }
+    const c = upCost(S, k);
+    b.textContent = man(c); b.disabled = S.money < c;
+    if (!b.disabled) can = true;
+  }
+  $('devDot').hidden = !can || curTab === 'dev';
+  if (curTab === 'route') {
+    $('route').innerHTML = DEST.map((d, i) => `<li class="${i <= S.reached ? 'done' : i === S.reached + 1 ? 'next' : ''}"><span class="pin"></span><div><strong>${d.name}</strong><p>${d.far}</p></div><span class="dv">${ms(d.dv)}</span></li>`).join('');
+  }
+  if (curTab === 'log') {
+    const okN = S.launches - S.fails;
+    $('stats').innerHTML = `<span>打ち上げ<b>${S.launches}</b></span><span>成功率<b>${S.launches ? Math.round(okN / S.launches * 100) : 0}%</b></span><span>最高Δv<b>${ms(S.best)}</b></span>`;
+    $('log').innerHTML = S.log.slice(0, 25).map(l => `<li class="${l.kind}">${l.text}</li>`).join('');
+  }
+}
+function setTab(t) {
+  curTab = t;
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+  $('tab-dev').hidden = t !== 'dev'; $('tab-route').hidden = t !== 'route'; $('tab-log').hidden = t !== 'log';
+  render();
+}
+function doLaunch() {
+  if (flight) return;
+  const sp = spec(S);
+  if (S.fuel < sp.fuel - 1e-9) return;
+  startFlight(launch(S, false, null));
+  save(); render();
+}
+
+// ---- away ----
+function catchUp(ms_) {
+  flight = null; $('banner').hidden = true;
+  const sum = simulate(S, ms_ / 1000);
+  const sec = Math.min(ms_ / 1000, 43200);
+  const rows = [['留守の時間', `${Math.floor(sec / 3600)}時間${Math.floor(sec % 3600 / 60)}分${ms_ / 1000 > 43200 ? '（上限）' : ''}`]];
+  if (sum.launches) rows.push(['打ち上げ', `${sum.launches}回（失敗 ${sum.fails}）`]);
+  rows.push(['増えた資金', man(sum.money)]);
+  if (sum.data) rows.push(['飛行データ', '+' + fmt(sum.data)]);
+  if (sum.firsts.length) rows.push(['新たな到達', sum.firsts[sum.firsts.length - 1]]);
+  $('awayDl').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
+  $('away').hidden = false;
+  save();
+}
+
+// ---- loop ----
+let last = performance.now(), lastWall = Date.now(), uiT = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  const wall = Date.now(), gap = wall - lastWall; lastWall = wall;
+  if (gap > 20000) { catchUp(gap); render(); }
+  else {
+    tickSec(S, Math.min(gap, 2000) / 1000, false, null);
+    if (S.auto && !flight && $('away').hidden && S.fuel >= spec(S).fuel - 1e-9) doLaunch();
+  }
+  updateFlight(dt);
+  drawScene(now, dt);
+  if (now - uiT > 250) { uiT = now; render(); }
+  requestAnimationFrame(frame);
+}
+let started = false;
+function start(data) {
+  if (started) return;
+  started = true;
+  S = (data && data.state) || load();
+  let away = 0;
+  if (!S) { S = newProgram(); pushLog(S, '発射場が開設された。燃料が満タンになったら最初の打ち上げです', 'ok', false); }
+  else if (!(data && data.state)) away = Date.now() - (S.t || Date.now());
+  buildRows();
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  $('go').addEventListener('click', doLaunch);
+  $('autoSw').addEventListener('click', () => { S.auto = !S.auto; render(); });
+  $('awayOk').addEventListener('click', () => { $('away').hidden = true; });
+  if (away > 60000) catchUp(away);
+  render();
+  lastWall = Date.now();
+  requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
+  setInterval(save, 5000);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+  window.addEventListener('pagehide', save);
+  try { if (window.claude && window.claude.hot && typeof window.claude.hot.snapshot === 'function') window.claude.hot.snapshot(() => ({ state: S })); } catch (e) {}
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>
